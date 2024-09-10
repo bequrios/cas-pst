@@ -26,3 +26,4 @@ pandas
 ipycytoscape
 networkx
 requests
+pyarrow
