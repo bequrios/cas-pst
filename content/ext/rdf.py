@@ -12,19 +12,37 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # Funktionsdefinition für die Konvertierung von RDF zu NetworkX
 def rdflib_to_networkx(rdf_graph):
     G = nx.DiGraph()  # Use Graph() if you want an undirected graph
+    literal_counter = 0  # To ensure uniqueness for literals
     for subj, pred, obj in rdf_graph:
+        
+        # Handle subject
         if isinstance(subj, rdflib.URIRef):
-            subj = rdf_graph.qname(subj)
+            subj_str = rdf_graph.qname(subj)
+            G.add_node(subj_str, node_type='URIRef')  # Mark it as a URIRef node
         elif isinstance(subj, rdflib.BNode):
-            subj = f"_:bnode_{subj}"  # Convert blank node to a unique string
-        pred = rdf_graph.qname(pred)
+            subj_str = f"_:bnode_{subj}"
+            G.add_node(subj_str, node_type='BNode')  # Mark it as a blank node
+
+        # Handle predicate
+        if isinstance(pred, rdflib.URIRef):
+            pred_str = rdf_graph.qname(pred)
+
+        # Handle object
         if isinstance(obj, rdflib.URIRef):
-            obj = rdf_graph.qname(obj)
+            obj_str = rdf_graph.qname(obj)
+            G.add_node(obj_str, node_type='URIRef')  # Mark it as a URIRef node
         elif isinstance(obj, rdflib.BNode):
-            obj = f"_:bnode_{obj}"  # Convert blank node to a unique string
+            obj_str = f"_:bnode_{obj}"
+            G.add_node(obj_str, node_type='BNode')  # Mark it as a blank node
         elif isinstance(obj, rdflib.Literal):
-            obj = str(obj)  # Convert Literal to its string representation
-        G.add_edge(str(subj), str(obj), label=str(pred))
+            # Create a unique identifier for the literal by appending a counter
+            literal_id = f"Literal_{literal_counter}_{str(obj)}"
+            literal_counter += 1
+            obj_str = literal_id
+            G.add_node(obj_str, label = str(obj), node_type='Literal')  # Mark it as a Literal node
+
+        # Add the edge with the label as the predicate
+        G.add_edge(subj_str, obj_str, label=pred_str)
     return G
 
 # Funktionsdefinition, um einen TTL String zu parsen und als Graph zu plotten
@@ -37,16 +55,38 @@ def parse_and_plot(ttl_string):
 
     style = [
         {
-            'selector': 'node',
+            'selector': 'node[node_type = "URIRef"]',
              'style': {
                 'font-family': 'helvetica',
                 'font-size': '12px',
                  'color': 'white',
                 'text-outline-width': 2,
-                'text-outline-color': 'green',
-                'background-color': 'green',
+                'text-outline-color': '#0868ac',
+                'background-color': '#0868ac',
                 'content': 'data(id)',
+                'text-valign': 'center'
+             }
+        },
+        {
+            'selector': 'node[node_type = "Literal"]',
+             'style': {
+                'font-family': 'helvetica',
+                'font-size': '12px',
+                 'color': 'white',
+                'text-outline-width': 2,
+                'text-outline-color': '#7bccc4',
+                'background-color': '#7bccc4',
+                'content': 'data(label)',
                 'text-valign': 'center',
+                'shape': 'rectangle'
+             }
+        },
+        {
+            'selector': 'node[node_type = "BNode"]',
+             'style': {
+                'background-color': 'grey',
+                'width': '10',
+                'height': '10'
              }
         },
         {
@@ -57,10 +97,10 @@ def parse_and_plot(ttl_string):
                 'label': 'data(label)',
                 'color': 'white',
                 'text-outline-width': 2,
-                'text-outline-color': 'orange',
-                'background-color': 'orange',
+                'text-outline-color': '#43a2ca',
+                'background-color': '#43a2ca',
                 'curve-style': 'bezier',
-                'target-arrow-shape': 'triangle',
+                'target-arrow-shape': 'triangle'
             }
         }
     ]
